@@ -4,7 +4,7 @@ import typing
 
 from backports.cached_property import cached_property
 
-from .environment import CodecombatApiEnvironment
+from .environment import CodeCombatEnvironment
 from .resources.auth.client import AsyncAuthClient, AuthClient
 from .resources.clans.client import AsyncClansClient, ClansClient
 from .resources.classrooms.client import AsyncClassroomsClient, ClassroomsClient
@@ -12,11 +12,11 @@ from .resources.stats.client import AsyncStatsClient, StatsClient
 from .resources.users.client import AsyncUsersClient, UsersClient
 
 
-class CodecombatApi:
+class CodeCombat:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None
     ):
@@ -45,11 +45,11 @@ class CodecombatApi:
         return UsersClient(environment=self._environment, username=self._username, password=self._password)
 
 
-class AsyncCodecombatApi:
+class AsyncCodeCombat:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None
     ):

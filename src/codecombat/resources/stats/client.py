@@ -8,7 +8,7 @@ import httpx
 import pydantic
 
 from ...core.api_error import ApiError
-from ...environment import CodecombatApiEnvironment
+from ...environment import CodeCombatEnvironment
 from .types.license_stats_response import LicenseStatsResponse
 from .types.playtime_stats_response import PlaytimeStatsResponse
 
@@ -17,7 +17,7 @@ class StatsClient:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None,
     ):
@@ -65,7 +65,7 @@ class AsyncStatsClient:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None,
     ):

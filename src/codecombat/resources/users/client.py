@@ -10,7 +10,7 @@ import pydantic
 
 from ...core.api_error import ApiError
 from ...core.jsonable_encoder import jsonable_encoder
-from ...environment import CodecombatApiEnvironment
+from ...environment import CodeCombatEnvironment
 from ..commons.types.classroom_response_with_code import ClassroomResponseWithCode
 from ..commons.types.object_id_string import ObjectIdString
 from ..commons.types.user_response import UserResponse
@@ -22,7 +22,7 @@ class UsersClient:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None,
     ):
@@ -248,7 +248,7 @@ class AsyncUsersClient:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None,
     ):

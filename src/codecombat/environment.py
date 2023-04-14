@@ -3,5 +3,5 @@
 import enum
 
 
-class CodecombatApiEnvironment(enum.Enum):
+class CodeCombatEnvironment(enum.Enum):
     PRODUCTION = "https://codecombat.com/api"

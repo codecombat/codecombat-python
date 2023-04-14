@@ -9,7 +9,7 @@ import pydantic
 
 from ...core.api_error import ApiError
 from ...core.jsonable_encoder import jsonable_encoder
-from ...environment import CodecombatApiEnvironment
+from ...environment import CodeCombatEnvironment
 from .types.clan_response import ClanResponse
 
 
@@ -17,7 +17,7 @@ class ClansClient:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None,
     ):
@@ -45,7 +45,7 @@ class AsyncClansClient:
     def __init__(
         self,
         *,
-        environment: CodecombatApiEnvironment = CodecombatApiEnvironment.PRODUCTION,
+        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
         username: typing.Optional[str] = None,
         password: typing.Optional[str] = None,
     ):
