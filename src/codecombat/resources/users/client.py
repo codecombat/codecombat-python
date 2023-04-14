@@ -20,11 +20,7 @@ from .types.user_role import UserRole
 
 class UsersClient:
     def __init__(
-        self,
-        *,
-        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
-        username: typing.Optional[str] = None,
-        password: typing.Optional[str] = None,
+        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
     ):
         self._environment = environment
         self._username = username
@@ -246,11 +242,7 @@ class UsersClient:
 
 class AsyncUsersClient:
     def __init__(
-        self,
-        *,
-        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
-        username: typing.Optional[str] = None,
-        password: typing.Optional[str] = None,
+        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
     ):
         self._environment = environment
         self._username = username

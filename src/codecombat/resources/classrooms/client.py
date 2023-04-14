@@ -20,11 +20,7 @@ from .types.member_stat import MemberStat
 
 class ClassroomsClient:
     def __init__(
-        self,
-        *,
-        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
-        username: typing.Optional[str] = None,
-        password: typing.Optional[str] = None,
+        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
     ):
         self._environment = environment
         self._username = username
@@ -185,11 +181,7 @@ class ClassroomsClient:
 
 class AsyncClassroomsClient:
     def __init__(
-        self,
-        *,
-        environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION,
-        username: typing.Optional[str] = None,
-        password: typing.Optional[str] = None,
+        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
     ):
         self._environment = environment
         self._username = username
