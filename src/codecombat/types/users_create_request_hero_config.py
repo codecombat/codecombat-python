@@ -5,13 +5,12 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from .datetime_string import DatetimeString
+from ..core.datetime_utils import serialize_datetime
+from .object_id_string import ObjectIdString
 
 
-class Subscription(pydantic.BaseModel):
-    ends: typing.Optional[DatetimeString]
-    active: typing.Optional[bool]
+class UsersCreateRequestHeroConfig(pydantic.BaseModel):
+    thang_type: typing.Optional[ObjectIdString] = pydantic.Field(alias="thangType")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -23,4 +22,6 @@ class Subscription(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
+        allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}

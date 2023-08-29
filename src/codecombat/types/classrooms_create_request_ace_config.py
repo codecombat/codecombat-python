@@ -5,14 +5,11 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from ...commons.types.object_id_string import ObjectIdString
-from .play_stats import PlayStats
+from ..core.datetime_utils import serialize_datetime
 
 
-class MemberStat(pydantic.BaseModel):
-    id: typing.Optional[ObjectIdString] = pydantic.Field(alias="_id")
-    stats: typing.Optional[PlayStats]
+class ClassroomsCreateRequestAceConfig(pydantic.BaseModel):
+    language: typing.Optional[str] = pydantic.Field(description="Programming language for the classroom")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -24,5 +21,5 @@ class MemberStat(pydantic.BaseModel):
 
     class Config:
         frozen = True
-        allow_population_by_field_name = True
+        smart_union = True
         json_encoders = {dt.datetime: serialize_datetime}

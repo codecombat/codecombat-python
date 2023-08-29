@@ -5,15 +5,12 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
+from ..core.datetime_utils import serialize_datetime
 
 
-class UserStats(pydantic.BaseModel):
-    games_completed: typing.Optional[float] = pydantic.Field(alias="gamesCompleted")
-    concepts: typing.Optional[typing.Dict[str, float]]
-    play_time: typing.Optional[float] = pydantic.Field(
-        alias="playTime", description=("Included only when specifically requested on the endpoint\n")
-    )
+class PlaytimeStatsResponse(pydantic.BaseModel):
+    play_time: typing.Optional[float] = pydantic.Field(alias="playTime", description="Total play time in seconds")
+    games_played: typing.Optional[float] = pydantic.Field(alias="gamesPlayed", description="Number of levels played")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -25,5 +22,6 @@ class UserStats(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}

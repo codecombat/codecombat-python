@@ -5,11 +5,12 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
+from ..core.datetime_utils import serialize_datetime
 
 
-class Level(pydantic.BaseModel):
-    original: typing.Optional[str] = pydantic.Field(description=("The id for the level.\n"))
+class UserResponseOAuthIdentitiesItem(pydantic.BaseModel):
+    provider: typing.Optional[str]
+    id: typing.Optional[str]
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -21,4 +22,5 @@ class Level(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         json_encoders = {dt.datetime: serialize_datetime}

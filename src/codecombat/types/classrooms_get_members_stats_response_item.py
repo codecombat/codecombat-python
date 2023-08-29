@@ -5,24 +5,14 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from ...commons.types.object_id_string import ObjectIdString
+from ..core.datetime_utils import serialize_datetime
+from .classrooms_get_members_stats_response_item_stats import ClassroomsGetMembersStatsResponseItemStats
+from .object_id_string import ObjectIdString
 
 
-class ClanResponse(pydantic.BaseModel):
-    """
-    Subset of properties listed here
-    """
-
+class ClassroomsGetMembersStatsResponseItem(pydantic.BaseModel):
     id: typing.Optional[ObjectIdString] = pydantic.Field(alias="_id")
-    name: typing.Optional[str]
-    display_name: typing.Optional[str] = pydantic.Field(alias="displayName")
-    members: typing.Optional[typing.List[ObjectIdString]]
-    owner_id: typing.Optional[ObjectIdString] = pydantic.Field(alias="ownerID")
-    description: typing.Optional[str]
-    type: typing.Optional[str]
-    kind: typing.Optional[str]
-    metadata: typing.Optional[typing.Dict[str, typing.Any]]
+    stats: typing.Optional[ClassroomsGetMembersStatsResponseItemStats]
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -34,5 +24,6 @@ class ClanResponse(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}
