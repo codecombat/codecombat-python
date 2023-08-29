@@ -4,34 +4,42 @@ import typing
 import urllib.parse
 from json.decoder import JSONDecodeError
 
-import httpx
 import pydantic
 
 from ...core.api_error import ApiError
+from ...core.client_wrapper import AsyncClientWrapper, SyncClientWrapper
 from ...core.jsonable_encoder import jsonable_encoder
-from ...environment import CodeCombatEnvironment
-from ..commons.types.classroom_response import ClassroomResponse
-from ..commons.types.classroom_response_with_code import ClassroomResponseWithCode
-from ..commons.types.object_id_string import ObjectIdString
-from .types.ace_config import AceConfig
-from .types.level_session_response import LevelSessionResponse
-from .types.member_stat import MemberStat
+from ...core.remove_none_from_dict import remove_none_from_dict
+from ...types.classroom_response import ClassroomResponse
+from ...types.classroom_response_with_code import ClassroomResponseWithCode
+from ...types.classrooms_create_request_ace_config import ClassroomsCreateRequestAceConfig
+from ...types.classrooms_get_members_stats_response_item import ClassroomsGetMembersStatsResponseItem
+from ...types.level_session_response import LevelSessionResponse
+from ...types.object_id_string import ObjectIdString
+
+# this is used as the default value for optional parameters
+OMIT = typing.cast(typing.Any, ...)
 
 
 class ClassroomsClient:
-    def __init__(
-        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
-    ):
-        self._environment = environment
-        self._username = username
-        self._password = password
+    def __init__(self, *, client_wrapper: SyncClientWrapper):
+        self._client_wrapper = client_wrapper
 
     def get(self, *, code: str, ret_member_limit: typing.Optional[float] = None) -> ClassroomResponseWithCode:
-        _response = httpx.request(
+        """
+        Returns the classroom details for a class code.
+
+        Parameters:
+            - code: str. The classroom's `code`.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "GET",
-            urllib.parse.urljoin(f"{self._environment.value}/", "classrooms"),
-            params={"code": code, "retMemberLimit": ret_member_limit},
-            auth=(self._username, self._password),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "classrooms"),
+            params=remove_none_from_dict({"code": code, "retMemberLimit": ret_member_limit}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponseWithCode, _response.json())  # type: ignore
@@ -41,29 +49,58 @@ class ClassroomsClient:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    def create(self, *, name: str, owner_id: ObjectIdString, ace_config: AceConfig) -> None:
-        _response = httpx.request(
+    def create(
+        self, *, name: str, owner_id: ObjectIdString, ace_config: ClassroomsCreateRequestAceConfig
+    ) -> ClassroomResponseWithCode:
+        """
+        Creates a new empty `Classroom`.
+
+        Parameters:
+            - name: str. Name of the classroom
+
+            - owner_id: ObjectIdString.
+
+            - ace_config: ClassroomsCreateRequestAceConfig.
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "POST",
-            urllib.parse.urljoin(f"{self._environment.value}/", "classrooms"),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "classrooms"),
             json=jsonable_encoder({"name": name, "ownerID": owner_id, "aceConfig": ace_config}),
-            auth=(self._username, self._password),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
-            return
+            return pydantic.parse_obj_as(ClassroomResponseWithCode, _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    def upsert_from_classroom(
-        self, handle: str, *, code: str, user_id: str, ret_member_limit: typing.Optional[float] = None
+    def upsert_member(
+        self, handle: str, *, code: str, user_id: str, ret_member_limit: typing.Optional[float] = OMIT
     ) -> ClassroomResponse:
-        _response = httpx.request(
+        """
+        Upserts a user into the classroom.
+
+        Parameters:
+            - handle: str. The document's `_id` or `slug`.
+
+            - code: str. The code for joining this classroom
+
+            - user_id: str. The `_id` or `slug` of the user to add to the class.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+        """
+        _request: typing.Dict[str, typing.Any] = {"code": code, "userId": user_id}
+        if ret_member_limit is not OMIT:
+            _request["retMemberLimit"] = ret_member_limit
+        _response = self._client_wrapper.httpx_client.request(
             "PUT",
-            urllib.parse.urljoin(f"{self._environment.value}/", f"classrooms/{handle}/members"),
-            json=jsonable_encoder({"code": code, "userId": user_id, "retMemberLimit": ret_member_limit}),
-            auth=(self._username, self._password),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"classrooms/{handle}/members"),
+            json=jsonable_encoder(_request),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
@@ -73,14 +110,28 @@ class ClassroomsClient:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    def delete_user_from_classroom(
-        self, handle: str, *, user_id: str, ret_member_limit: typing.Optional[float] = None
+    def remove_member(
+        self, handle: str, *, user_id: str, ret_member_limit: typing.Optional[float] = OMIT
     ) -> ClassroomResponse:
-        _response = httpx.request(
+        """
+        Remove a user from the classroom.
+
+        Parameters:
+            - handle: str. The document's `_id` or `slug`.
+
+            - user_id: str. The `_id` or `slug` of the user to remove from the class.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+        """
+        _request: typing.Dict[str, typing.Any] = {"userId": user_id}
+        if ret_member_limit is not OMIT:
+            _request["retMemberLimit"] = ret_member_limit
+        _response = self._client_wrapper.httpx_client.request(
             "DELETE",
-            urllib.parse.urljoin(f"{self._environment.value}/", f"classrooms/{handle}/members"),
-            json=jsonable_encoder({"userId": user_id, "retMemberLimit": ret_member_limit}),
-            auth=(self._username, self._password),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"classrooms/{handle}/members"),
+            json=jsonable_encoder(_request),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
@@ -98,14 +149,30 @@ class ClassroomsClient:
         ret_member_limit: typing.Optional[float] = None,
         user_id: ObjectIdString,
     ) -> ClassroomResponse:
-        _response = httpx.request(
+        """
+        Enrolls a user in a course in a classroom.
+        If the course is paid, user must have an active license.
+        User must be a member of the classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - course_handle: str. The course's `_id`.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+
+            - user_id: ObjectIdString.
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "PUT",
             urllib.parse.urljoin(
-                f"{self._environment.value}/", f"classrooms/{classroom_handle}/courses/{course_handle}/enrolled"
+                f"{self._client_wrapper.get_base_url()}/",
+                f"classrooms/{classroom_handle}/courses/{course_handle}/enrolled",
             ),
-            params={"retMemberLimit": ret_member_limit},
+            params=remove_none_from_dict({"retMemberLimit": ret_member_limit}),
             json=jsonable_encoder({"userId": user_id}),
-            auth=(self._username, self._password),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
@@ -115,7 +182,7 @@ class ClassroomsClient:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    def remove_user_from_classroom(
+    def remove_enrolled_user(
         self,
         classroom_handle: str,
         course_handle: str,
@@ -123,14 +190,28 @@ class ClassroomsClient:
         ret_member_limit: typing.Optional[float] = None,
         user_id: ObjectIdString,
     ) -> ClassroomResponse:
-        _response = httpx.request(
+        """
+        Removes an enrolled user from a course in a classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - course_handle: str. The course's `_id`.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+
+            - user_id: ObjectIdString.
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "PUT",
             urllib.parse.urljoin(
-                f"{self._environment.value}/", f"classrooms/{classroom_handle}/courses/{course_handle}/remove-enrolled"
+                f"{self._client_wrapper.get_base_url()}/",
+                f"classrooms/{classroom_handle}/courses/{course_handle}/remove-enrolled",
             ),
-            params={"retMemberLimit": ret_member_limit},
+            params=remove_none_from_dict({"retMemberLimit": ret_member_limit}),
             json=jsonable_encoder({"userId": user_id}),
-            auth=(self._username, self._password),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
@@ -147,28 +228,52 @@ class ClassroomsClient:
         project: typing.Optional[str] = None,
         member_limit: typing.Optional[float] = None,
         member_skip: typing.Optional[float] = None,
-    ) -> typing.List[MemberStat]:
-        _response = httpx.request(
+    ) -> typing.List[ClassroomsGetMembersStatsResponseItem]:
+        """
+        Returns a list of all members stats for the classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - project: typing.Optional[str]. If specified, include only the specified projection of returned stats; else, return all stats. Format as a comma-separated list, like `creator,playtime,state.complete`.
+
+            - member_limit: typing.Optional[float]. Limit the return member number. the default value is 10, and the max value is 100
+
+            - member_skip: typing.Optional[float]. Skip the members that doesn't need to return, for pagination
+
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "GET",
-            urllib.parse.urljoin(f"{self._environment.value}/", f"classrooms/{classroom_handle}/stats"),
-            params={"project": project, "memberLimit": member_limit, "memberSkip": member_skip},
-            auth=(self._username, self._password),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"classrooms/{classroom_handle}/stats"),
+            params=remove_none_from_dict({"project": project, "memberLimit": member_limit, "memberSkip": member_skip}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.List[MemberStat], _response.json())  # type: ignore
+            return pydantic.parse_obj_as(typing.List[ClassroomsGetMembersStatsResponseItem], _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    def get_level_session(self, classroom_handle: str, member_handle: str) -> typing.List[LevelSessionResponse]:
-        _response = httpx.request(
+    def get_levels_played(self, classroom_handle: str, member_handle: str) -> typing.List[LevelSessionResponse]:
+        """
+        Returns a list of all levels played by the user for the classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - member_handle: str. The classroom member's `_id`.
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "GET",
             urllib.parse.urljoin(
-                f"{self._environment.value}/", f"classrooms/{classroom_handle}/members/{member_handle}/sessions"
+                f"{self._client_wrapper.get_base_url()}/",
+                f"classrooms/{classroom_handle}/members/{member_handle}/sessions",
             ),
-            auth=(self._username, self._password),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(typing.List[LevelSessionResponse], _response.json())  # type: ignore
@@ -180,21 +285,25 @@ class ClassroomsClient:
 
 
 class AsyncClassroomsClient:
-    def __init__(
-        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
-    ):
-        self._environment = environment
-        self._username = username
-        self._password = password
+    def __init__(self, *, client_wrapper: AsyncClientWrapper):
+        self._client_wrapper = client_wrapper
 
     async def get(self, *, code: str, ret_member_limit: typing.Optional[float] = None) -> ClassroomResponseWithCode:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "GET",
-                urllib.parse.urljoin(f"{self._environment.value}/", "classrooms"),
-                params={"code": code, "retMemberLimit": ret_member_limit},
-                auth=(self._username, self._password),
-            )
+        """
+        Returns the classroom details for a class code.
+
+        Parameters:
+            - code: str. The classroom's `code`.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "GET",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "classrooms"),
+            params=remove_none_from_dict({"code": code, "retMemberLimit": ret_member_limit}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponseWithCode, _response.json())  # type: ignore
         try:
@@ -203,32 +312,59 @@ class AsyncClassroomsClient:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    async def create(self, *, name: str, owner_id: ObjectIdString, ace_config: AceConfig) -> None:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "POST",
-                urllib.parse.urljoin(f"{self._environment.value}/", "classrooms"),
-                json=jsonable_encoder({"name": name, "ownerID": owner_id, "aceConfig": ace_config}),
-                auth=(self._username, self._password),
-            )
+    async def create(
+        self, *, name: str, owner_id: ObjectIdString, ace_config: ClassroomsCreateRequestAceConfig
+    ) -> ClassroomResponseWithCode:
+        """
+        Creates a new empty `Classroom`.
+
+        Parameters:
+            - name: str. Name of the classroom
+
+            - owner_id: ObjectIdString.
+
+            - ace_config: ClassroomsCreateRequestAceConfig.
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "POST",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "classrooms"),
+            json=jsonable_encoder({"name": name, "ownerID": owner_id, "aceConfig": ace_config}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
-            return
+            return pydantic.parse_obj_as(ClassroomResponseWithCode, _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    async def upsert_from_classroom(
-        self, handle: str, *, code: str, user_id: str, ret_member_limit: typing.Optional[float] = None
+    async def upsert_member(
+        self, handle: str, *, code: str, user_id: str, ret_member_limit: typing.Optional[float] = OMIT
     ) -> ClassroomResponse:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "PUT",
-                urllib.parse.urljoin(f"{self._environment.value}/", f"classrooms/{handle}/members"),
-                json=jsonable_encoder({"code": code, "userId": user_id, "retMemberLimit": ret_member_limit}),
-                auth=(self._username, self._password),
-            )
+        """
+        Upserts a user into the classroom.
+
+        Parameters:
+            - handle: str. The document's `_id` or `slug`.
+
+            - code: str. The code for joining this classroom
+
+            - user_id: str. The `_id` or `slug` of the user to add to the class.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+        """
+        _request: typing.Dict[str, typing.Any] = {"code": code, "userId": user_id}
+        if ret_member_limit is not OMIT:
+            _request["retMemberLimit"] = ret_member_limit
+        _response = await self._client_wrapper.httpx_client.request(
+            "PUT",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"classrooms/{handle}/members"),
+            json=jsonable_encoder(_request),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
         try:
@@ -237,16 +373,29 @@ class AsyncClassroomsClient:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    async def delete_user_from_classroom(
-        self, handle: str, *, user_id: str, ret_member_limit: typing.Optional[float] = None
+    async def remove_member(
+        self, handle: str, *, user_id: str, ret_member_limit: typing.Optional[float] = OMIT
     ) -> ClassroomResponse:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "DELETE",
-                urllib.parse.urljoin(f"{self._environment.value}/", f"classrooms/{handle}/members"),
-                json=jsonable_encoder({"userId": user_id, "retMemberLimit": ret_member_limit}),
-                auth=(self._username, self._password),
-            )
+        """
+        Remove a user from the classroom.
+
+        Parameters:
+            - handle: str. The document's `_id` or `slug`.
+
+            - user_id: str. The `_id` or `slug` of the user to remove from the class.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+        """
+        _request: typing.Dict[str, typing.Any] = {"userId": user_id}
+        if ret_member_limit is not OMIT:
+            _request["retMemberLimit"] = ret_member_limit
+        _response = await self._client_wrapper.httpx_client.request(
+            "DELETE",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"classrooms/{handle}/members"),
+            json=jsonable_encoder(_request),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
         try:
@@ -263,16 +412,31 @@ class AsyncClassroomsClient:
         ret_member_limit: typing.Optional[float] = None,
         user_id: ObjectIdString,
     ) -> ClassroomResponse:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "PUT",
-                urllib.parse.urljoin(
-                    f"{self._environment.value}/", f"classrooms/{classroom_handle}/courses/{course_handle}/enrolled"
-                ),
-                params={"retMemberLimit": ret_member_limit},
-                json=jsonable_encoder({"userId": user_id}),
-                auth=(self._username, self._password),
-            )
+        """
+        Enrolls a user in a course in a classroom.
+        If the course is paid, user must have an active license.
+        User must be a member of the classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - course_handle: str. The course's `_id`.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+
+            - user_id: ObjectIdString.
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "PUT",
+            urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/",
+                f"classrooms/{classroom_handle}/courses/{course_handle}/enrolled",
+            ),
+            params=remove_none_from_dict({"retMemberLimit": ret_member_limit}),
+            json=jsonable_encoder({"userId": user_id}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
         try:
@@ -281,7 +445,7 @@ class AsyncClassroomsClient:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    async def remove_user_from_classroom(
+    async def remove_enrolled_user(
         self,
         classroom_handle: str,
         course_handle: str,
@@ -289,17 +453,29 @@ class AsyncClassroomsClient:
         ret_member_limit: typing.Optional[float] = None,
         user_id: ObjectIdString,
     ) -> ClassroomResponse:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "PUT",
-                urllib.parse.urljoin(
-                    f"{self._environment.value}/",
-                    f"classrooms/{classroom_handle}/courses/{course_handle}/remove-enrolled",
-                ),
-                params={"retMemberLimit": ret_member_limit},
-                json=jsonable_encoder({"userId": user_id}),
-                auth=(self._username, self._password),
-            )
+        """
+        Removes an enrolled user from a course in a classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - course_handle: str. The course's `_id`.
+
+            - ret_member_limit: typing.Optional[float]. limit the return number of members for the classroom, the default value is 1000
+
+            - user_id: ObjectIdString.
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "PUT",
+            urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/",
+                f"classrooms/{classroom_handle}/courses/{course_handle}/remove-enrolled",
+            ),
+            params=remove_none_from_dict({"retMemberLimit": ret_member_limit}),
+            json=jsonable_encoder({"userId": user_id}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(ClassroomResponse, _response.json())  # type: ignore
         try:
@@ -315,31 +491,53 @@ class AsyncClassroomsClient:
         project: typing.Optional[str] = None,
         member_limit: typing.Optional[float] = None,
         member_skip: typing.Optional[float] = None,
-    ) -> typing.List[MemberStat]:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "GET",
-                urllib.parse.urljoin(f"{self._environment.value}/", f"classrooms/{classroom_handle}/stats"),
-                params={"project": project, "memberLimit": member_limit, "memberSkip": member_skip},
-                auth=(self._username, self._password),
-            )
+    ) -> typing.List[ClassroomsGetMembersStatsResponseItem]:
+        """
+        Returns a list of all members stats for the classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - project: typing.Optional[str]. If specified, include only the specified projection of returned stats; else, return all stats. Format as a comma-separated list, like `creator,playtime,state.complete`.
+
+            - member_limit: typing.Optional[float]. Limit the return member number. the default value is 10, and the max value is 100
+
+            - member_skip: typing.Optional[float]. Skip the members that doesn't need to return, for pagination
+
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "GET",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", f"classrooms/{classroom_handle}/stats"),
+            params=remove_none_from_dict({"project": project, "memberLimit": member_limit, "memberSkip": member_skip}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
-            return pydantic.parse_obj_as(typing.List[MemberStat], _response.json())  # type: ignore
+            return pydantic.parse_obj_as(typing.List[ClassroomsGetMembersStatsResponseItem], _response.json())  # type: ignore
         try:
             _response_json = _response.json()
         except JSONDecodeError:
             raise ApiError(status_code=_response.status_code, body=_response.text)
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
-    async def get_level_session(self, classroom_handle: str, member_handle: str) -> typing.List[LevelSessionResponse]:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "GET",
-                urllib.parse.urljoin(
-                    f"{self._environment.value}/", f"classrooms/{classroom_handle}/members/{member_handle}/sessions"
-                ),
-                auth=(self._username, self._password),
-            )
+    async def get_levels_played(self, classroom_handle: str, member_handle: str) -> typing.List[LevelSessionResponse]:
+        """
+        Returns a list of all levels played by the user for the classroom.
+
+        Parameters:
+            - classroom_handle: str. The classroom's `_id`.
+
+            - member_handle: str. The classroom member's `_id`.
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "GET",
+            urllib.parse.urljoin(
+                f"{self._client_wrapper.get_base_url()}/",
+                f"classrooms/{classroom_handle}/members/{member_handle}/sessions",
+            ),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(typing.List[LevelSessionResponse], _response.json())  # type: ignore
         try:

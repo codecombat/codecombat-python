@@ -5,25 +5,15 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from .course import Course
+from ..core.datetime_utils import serialize_datetime
 from .object_id_string import ObjectIdString
 
 
-class ClassroomResponseWithCode(pydantic.BaseModel):
-    """
-    Subset of properties listed here
-    """
-
+class ClassroomResponseWithCodeCoursesItem(pydantic.BaseModel):
     id: typing.Optional[ObjectIdString] = pydantic.Field(alias="_id")
-    name: typing.Optional[str]
-    members: typing.Optional[typing.List[ObjectIdString]]
-    owner_id: typing.Optional[ObjectIdString] = pydantic.Field(alias="ownerID")
-    description: typing.Optional[str]
-    code: typing.Optional[str]
-    code_camel: typing.Optional[str] = pydantic.Field(alias="codeCamel")
-    courses: typing.Optional[typing.List[Course]]
-    clan_id: typing.Optional[ObjectIdString] = pydantic.Field(alias="clanId")
+    levels: typing.Optional[typing.List[typing.Dict[str, typing.Any]]]
+    enrolled: typing.Optional[typing.List[ObjectIdString]]
+    instance_id: typing.Optional[ObjectIdString]
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -35,5 +25,6 @@ class ClassroomResponseWithCode(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}

@@ -5,13 +5,13 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from .auth_identity import AuthIdentity
-from .license import License
+from ..core.datetime_utils import serialize_datetime
 from .object_id_string import ObjectIdString
 from .role_string import RoleString
-from .subscription import Subscription
-from .user_stats import UserStats
+from .user_response_license import UserResponseLicense
+from .user_response_o_auth_identities_item import UserResponseOAuthIdentitiesItem
+from .user_response_stats import UserResponseStats
+from .user_response_subscription import UserResponseSubscription
 
 
 class UserResponse(pydantic.BaseModel):
@@ -24,10 +24,12 @@ class UserResponse(pydantic.BaseModel):
     name: typing.Optional[str]
     slug: typing.Optional[str]
     role: typing.Optional[RoleString]
-    stats: typing.Optional[UserStats]
-    o_auth_identities: typing.Optional[typing.List[AuthIdentity]] = pydantic.Field(alias="oAuthIdentities")
-    subscription: typing.Optional[Subscription]
-    license: typing.Optional[License]
+    stats: typing.Optional[UserResponseStats]
+    o_auth_identities: typing.Optional[typing.List[UserResponseOAuthIdentitiesItem]] = pydantic.Field(
+        alias="oAuthIdentities"
+    )
+    subscription: typing.Optional[UserResponseSubscription]
+    license: typing.Optional[UserResponseLicense]
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -39,5 +41,6 @@ class UserResponse(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}

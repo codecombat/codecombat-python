@@ -6,16 +6,16 @@ import typing
 T_Result = typing.TypeVar("T_Result")
 
 
-class UserRole(str, enum.Enum):
+class UsersCreateRequestRole(str, enum.Enum):
     """
-    A `"student"` or `"teacher"`. If unset, a home user will be created, unable to join classrooms.
+    `"student"` or `"teacher"`. If unset, a home user will be created, unable to join classrooms.
     """
 
     STUDENT = "student"
     TEACHER = "teacher"
 
     def visit(self, student: typing.Callable[[], T_Result], teacher: typing.Callable[[], T_Result]) -> T_Result:
-        if self is UserRole.STUDENT:
+        if self is UsersCreateRequestRole.STUDENT:
             return student()
-        if self is UserRole.TEACHER:
+        if self is UsersCreateRequestRole.TEACHER:
             return teacher()
