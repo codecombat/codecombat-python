@@ -21,7 +21,7 @@ class BaseClientWrapper:
         headers: typing.Dict[str, str] = {
             "X-Fern-Language": "Python",
             "X-Fern-SDK-Name": "codecombat",
-            "X-Fern-SDK-Version": "0.1.7",
+            "X-Fern-SDK-Version": "0.1.8",
         }
         headers["Authorization"] = httpx.BasicAuth(self._get_username(), self._get_password())._auth_header
         return headers
