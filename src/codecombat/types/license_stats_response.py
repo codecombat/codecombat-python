@@ -5,21 +5,21 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
+from ..core.datetime_utils import serialize_datetime
 
 
 class LicenseStatsResponse(pydantic.BaseModel):
     license_days_granted: typing.Optional[float] = pydantic.Field(
-        alias="licenseDaysGranted", description=("Total number of license days granted\n")
+        alias="licenseDaysGranted", description="Total number of license days granted"
     )
     license_days_used: typing.Optional[float] = pydantic.Field(
-        alias="licenseDaysUsed", description=("Number of license days used\n")
+        alias="licenseDaysUsed", description="Number of license days used"
     )
     license_days_remaining: typing.Optional[float] = pydantic.Field(
-        alias="licenseDaysRemaining", description=("Number of license days remaining\n")
+        alias="licenseDaysRemaining", description="Number of license days remaining"
     )
     active_licenses: typing.Optional[float] = pydantic.Field(
-        alias="activeLicenses", description=("Number of active/valid licenses\n")
+        alias="activeLicenses", description="Number of active/valid licenses"
     )
 
     def json(self, **kwargs: typing.Any) -> str:
@@ -32,5 +32,6 @@ class LicenseStatsResponse(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}

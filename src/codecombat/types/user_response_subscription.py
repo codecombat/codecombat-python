@@ -5,11 +5,13 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
+from ..core.datetime_utils import serialize_datetime
+from .datetime_string import DatetimeString
 
 
-class AceConfig(pydantic.BaseModel):
-    language: typing.Optional[str] = pydantic.Field(description=("Programming language for the classroom\n"))
+class UserResponseSubscription(pydantic.BaseModel):
+    ends: typing.Optional[DatetimeString]
+    active: typing.Optional[bool]
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -21,4 +23,5 @@ class AceConfig(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         json_encoders = {dt.datetime: serialize_datetime}

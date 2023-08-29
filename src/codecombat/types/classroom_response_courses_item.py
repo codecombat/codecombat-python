@@ -5,12 +5,15 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from ...commons.types.object_id_string import ObjectIdString
+from ..core.datetime_utils import serialize_datetime
+from .object_id_string import ObjectIdString
 
 
-class HeroConfig(pydantic.BaseModel):
-    thang_type: typing.Optional[ObjectIdString] = pydantic.Field(alias="thangType")
+class ClassroomResponseCoursesItem(pydantic.BaseModel):
+    id: typing.Optional[ObjectIdString] = pydantic.Field(alias="_id")
+    levels: typing.Optional[typing.List[typing.Dict[str, typing.Any]]]
+    enrolled: typing.Optional[typing.List[ObjectIdString]]
+    instance_id: typing.Optional[ObjectIdString]
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -22,5 +25,6 @@ class HeroConfig(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}
