@@ -5,26 +5,25 @@ import typing
 
 import pydantic
 
-from ....core.datetime_utils import serialize_datetime
-from .course import Course
+from ..core.datetime_utils import serialize_datetime
+from .classroom_response_with_code_courses_item import ClassroomResponseWithCodeCoursesItem
 from .object_id_string import ObjectIdString
 
 
-class ClassroomResponse(pydantic.BaseModel):
+class ClassroomResponseWithCode(pydantic.BaseModel):
     """
     Subset of properties listed here
     """
 
     id: typing.Optional[ObjectIdString] = pydantic.Field(alias="_id")
-    name: typing.Optional[str] = pydantic.Field(description=("The name of the classroom\n"))
-    members: typing.Optional[typing.List[ObjectIdString]] = pydantic.Field(
-        description=("List of _ids of the student members of the classroom\n")
-    )
-    owner_id: typing.Optional[ObjectIdString] = pydantic.Field(
-        alias="ownerID", description=("The _id of the teacher owner of the classroom.\n")
-    )
+    name: typing.Optional[str]
+    members: typing.Optional[typing.List[ObjectIdString]]
+    owner_id: typing.Optional[ObjectIdString] = pydantic.Field(alias="ownerID")
     description: typing.Optional[str]
-    courses: typing.Optional[typing.List[Course]]
+    code: typing.Optional[str]
+    code_camel: typing.Optional[str] = pydantic.Field(alias="codeCamel")
+    courses: typing.Optional[typing.List[ClassroomResponseWithCodeCoursesItem]]
+    clan_id: typing.Optional[ObjectIdString] = pydantic.Field(alias="clanId")
 
     def json(self, **kwargs: typing.Any) -> str:
         kwargs_with_defaults: typing.Any = {"by_alias": True, "exclude_unset": True, **kwargs}
@@ -36,5 +35,6 @@ class ClassroomResponse(pydantic.BaseModel):
 
     class Config:
         frozen = True
+        smart_union = True
         allow_population_by_field_name = True
         json_encoders = {dt.datetime: serialize_datetime}

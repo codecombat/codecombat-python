@@ -4,22 +4,18 @@ import typing
 import urllib.parse
 from json.decoder import JSONDecodeError
 
-import httpx
 import pydantic
 
 from ...core.api_error import ApiError
-from ...environment import CodeCombatEnvironment
-from .types.license_stats_response import LicenseStatsResponse
-from .types.playtime_stats_response import PlaytimeStatsResponse
+from ...core.client_wrapper import AsyncClientWrapper, SyncClientWrapper
+from ...core.remove_none_from_dict import remove_none_from_dict
+from ...types.license_stats_response import LicenseStatsResponse
+from ...types.playtime_stats_response import PlaytimeStatsResponse
 
 
 class StatsClient:
-    def __init__(
-        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
-    ):
-        self._environment = environment
-        self._username = username
-        self._password = password
+    def __init__(self, *, client_wrapper: SyncClientWrapper):
+        self._client_wrapper = client_wrapper
 
     def get_playtime_stats(
         self,
@@ -28,11 +24,22 @@ class StatsClient:
         end_date: typing.Optional[str] = None,
         country: typing.Optional[str] = None,
     ) -> PlaytimeStatsResponse:
-        _response = httpx.request(
+        """
+        Returns the playtime stats
+
+        Parameters:
+            - start_date: typing.Optional[str]. Earliest an included user was created
+
+            - end_date: typing.Optional[str]. Latest an included user was created
+
+            - country: typing.Optional[str]. Filter by country string
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "GET",
-            urllib.parse.urljoin(f"{self._environment.value}/", "playtime-stats"),
-            params={"startDate": start_date, "endDate": end_date, "country": country},
-            auth=(self._username, self._password),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "playtime-stats"),
+            params=remove_none_from_dict({"startDate": start_date, "endDate": end_date, "country": country}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(PlaytimeStatsResponse, _response.json())  # type: ignore
@@ -43,10 +50,14 @@ class StatsClient:
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
     def get_license_stats(self) -> LicenseStatsResponse:
-        _response = httpx.request(
+        """
+        Returns the license stats
+        """
+        _response = self._client_wrapper.httpx_client.request(
             "GET",
-            urllib.parse.urljoin(f"{self._environment.value}/", "license-stats"),
-            auth=(self._username, self._password),
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "license-stats"),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
         )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(LicenseStatsResponse, _response.json())  # type: ignore
@@ -58,12 +69,8 @@ class StatsClient:
 
 
 class AsyncStatsClient:
-    def __init__(
-        self, *, environment: CodeCombatEnvironment = CodeCombatEnvironment.PRODUCTION, username: str, password: str
-    ):
-        self._environment = environment
-        self._username = username
-        self._password = password
+    def __init__(self, *, client_wrapper: AsyncClientWrapper):
+        self._client_wrapper = client_wrapper
 
     async def get_playtime_stats(
         self,
@@ -72,13 +79,23 @@ class AsyncStatsClient:
         end_date: typing.Optional[str] = None,
         country: typing.Optional[str] = None,
     ) -> PlaytimeStatsResponse:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "GET",
-                urllib.parse.urljoin(f"{self._environment.value}/", "playtime-stats"),
-                params={"startDate": start_date, "endDate": end_date, "country": country},
-                auth=(self._username, self._password),
-            )
+        """
+        Returns the playtime stats
+
+        Parameters:
+            - start_date: typing.Optional[str]. Earliest an included user was created
+
+            - end_date: typing.Optional[str]. Latest an included user was created
+
+            - country: typing.Optional[str]. Filter by country string
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "GET",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "playtime-stats"),
+            params=remove_none_from_dict({"startDate": start_date, "endDate": end_date, "country": country}),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(PlaytimeStatsResponse, _response.json())  # type: ignore
         try:
@@ -88,12 +105,15 @@ class AsyncStatsClient:
         raise ApiError(status_code=_response.status_code, body=_response_json)
 
     async def get_license_stats(self) -> LicenseStatsResponse:
-        async with httpx.AsyncClient() as _client:
-            _response = await _client.request(
-                "GET",
-                urllib.parse.urljoin(f"{self._environment.value}/", "license-stats"),
-                auth=(self._username, self._password),
-            )
+        """
+        Returns the license stats
+        """
+        _response = await self._client_wrapper.httpx_client.request(
+            "GET",
+            urllib.parse.urljoin(f"{self._client_wrapper.get_base_url()}/", "license-stats"),
+            headers=self._client_wrapper.get_headers(),
+            timeout=60,
+        )
         if 200 <= _response.status_code < 300:
             return pydantic.parse_obj_as(LicenseStatsResponse, _response.json())  # type: ignore
         try:

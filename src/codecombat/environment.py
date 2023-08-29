@@ -4,4 +4,4 @@ import enum
 
 
 class CodeCombatEnvironment(enum.Enum):
-    PRODUCTION = "https://codecombat.com/api"
+    DEFAULT = "https://codecombat.com/api"
